@@ -18,8 +18,9 @@ from transformers import AutoTokenizer
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("convert_hf_to_gguf_update")
 sess = requests.Session()
-
-convert_py_pth = pathlib.Path("convert_hf_to_gguf.py")
+current_file_path = pathlib.Path(__file__).resolve()
+current_dir = current_file_path.parent
+convert_py_pth = pathlib.Path(f"{current_dir}/convert_hf_to_gguf.py")
 convert_py = convert_py_pth.read_text(encoding="utf-8")
 hf_token_pth = pathlib.Path.home() / ".cache" / "huggingface" / "token"
 hf_token = hf_token_pth.read_text(encoding="utf-8").strip() if hf_token_pth.exists() else None
@@ -141,6 +142,12 @@ models = [
     {"name": "mellum",           "tokt": TOKENIZER_TYPE.BPE, "repo": "https://huggingface.co/JetBrains/Mellum-4b-base", },
     {"name": "llada-moe",        "tokt": TOKENIZER_TYPE.BPE, "repo": "https://huggingface.co/inclusionAI/LLaDA-MoE-7B-A1B-Base", },
     {"name": "granite-docling",  "tokt": TOKENIZER_TYPE.BPE, "repo": "https://huggingface.co/ibm-granite/granite-docling-258M", },
+    {
+        "name": "vicuna-68m", "tokt": TOKENIZER_TYPE.SPM, "repo": "https://huggingface.co/double7/vicuna-68m",
+    },
+    {
+        "name": "vicuna-7b-v1.3", "tokt": TOKENIZER_TYPE.SPM, "repo": "https://huggingface.co/lmsys/vicuna-7b-v1.3",
+    },
 ]
 
 # some models are known to be broken upstream, so we will skip them as exceptions
