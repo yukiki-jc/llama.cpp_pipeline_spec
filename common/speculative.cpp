@@ -390,31 +390,7 @@ llama_tokens common_speculative_gen_draft(
     const int n_ctx = llama_n_ctx(ctx_dft) - params.n_draft;
 
     llama_tokens prompt_tgt_draft_model;
-    // if (!spec->vocab_dft_compatible) {
-    //     std::string text;
-    //     text = common_detokenize(ctx_tgt, prompt_tgt_main_model, true);
-    //     text = replace_to_dft(spec, text);
-    //     LOG_DBG("%s: main->draft detokenized string: '%s'\n", __func__, text.c_str());
-    //     prompt_tgt_draft_model = common_tokenize(ctx_dft, text, false, true);
-
-    //     // convert id_last to draft vocab. llama_detokenize is called directly to avoid an allocation
-    //     const auto * model_tgt = llama_get_model(ctx_tgt);
-    //     const auto * vocab_tgt = llama_model_get_vocab(model_tgt);
-
-    //     int32_t n_chars = llama_detokenize(vocab_tgt, &id_last, 1, nullptr, 0, false, false);
-    //     GGML_ASSERT(n_chars < 0 && "failed to detokenize id_last");
-    //     text.resize(-n_chars);
-    //     llama_detokenize(vocab_tgt, &id_last, 1, text.data(), text.size(), false, false);
-    //     text = replace_to_dft(spec, text);
-
-    //     LOG_DBG("main->draft detokenized id_last(%d): '%s'\n", id_last, text.c_str());
-    //     id_last = common_tokenize(ctx_dft, text, false, true)[0];
-    // }
-    // if (!spec->vocab_dft_compatible) { 
-    //     // only transform the first token (bos) to '0' 
-    //     prompt_tgt_draft_model.push_back(0);
-    // }
-    // prompt_tgt's tokens will always be compatible with ctx_dft
+  
     const llama_tokens &prompt_tgt = prompt_tgt_main_model;
 
     const int i_start = std::max<int>(0, (int) prompt_tgt.size() - n_ctx);
@@ -542,14 +518,5 @@ llama_tokens common_speculative_gen_draft(
         prompt_dft.push_back(id);
     }
 
-    // if (!spec->vocab_dft_compatible) {
-    //     std::string detokenized = common_detokenize(ctx_dft, result, true);
-    //     detokenized = replace_to_tgt(spec, detokenized);
-    //     LOG_DBG("draft->main detokenized string: '%s'\n", detokenized.c_str());
-    //     result = common_tokenize(ctx_tgt, detokenized, false, true);
-    //     if (result.size() > (size_t)params.n_draft) {
-    //         result.resize(params.n_draft);
-    //     }
-    // }
     return result;
 }
