@@ -361,7 +361,7 @@ llama_tokens original_common_speculative_gen_draft(
 
 
 // --- ADD THIS HELPER FUNCTION ---
-static llama_token swap_tokens(llama_token token) {
+static llama_token swap_token(llama_token token) {
     if (token == 0) {
         return 1;
     }
@@ -401,7 +401,7 @@ llama_tokens common_speculative_gen_draft(
         int cur = 0;
         while (i_start + cur < (int) prompt_tgt.size() &&
                i       + cur < (int) prompt_dft.size() &&
-               prompt_tgt[i_start + cur] == prompt_dft[i + cur]) {
+               swap_token(prompt_tgt[i_start + cur]) == prompt_dft[i + cur]) {
             cur++;
         }
 
@@ -452,7 +452,7 @@ llama_tokens common_speculative_gen_draft(
 
     for (size_t i = i_start + reuse_n; i < prompt_tgt.size(); ++i) {
         //LOG_DBG("i = %d, i_start = %d, reuse_n = %d, i - i_start = %d, id = %6d\n", i, i_start, reuse_n, i - i_start, prompt_tgt[i]);
-        const llama_token token_to_add = swap_tokens(prompt_tgt[i]);
+        const llama_token token_to_add = swap_token(prompt_tgt[i]);
         common_batch_add(batch, token_to_add, i - i_start, { 0 }, false);
 
         prompt_dft.push_back(token_to_add);
@@ -470,7 +470,7 @@ llama_tokens common_speculative_gen_draft(
     LOG_DBG("%s: n_past = %d\n", __func__, n_past);
 
     common_batch_clear(batch);
-    const llama_token id_last_swapped = swap_tokens(id_last);
+    const llama_token id_last_swapped = swap_token(id_last);
     common_batch_add  (batch, id_last_swapped, n_past, { 0 }, true);
 
     prompt_dft.push_back(id_last_swapped);
