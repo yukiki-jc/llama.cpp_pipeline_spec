@@ -457,10 +457,10 @@ llama_tokens common_speculative_gen_draft(
 
         prompt_dft.push_back(token_to_add);
     }
-    LOG_DBG("%s: draft prompt before history decode: %s\n", __func__, string_from(ctx_dft, prompt_dft).c_str());
+    // LOG_DBG("%s: draft prompt before history decode: %s\n", __func__, string_from(ctx_dft, prompt_dft).c_str());
     // we should rarely end-up here during normal decoding
     if (batch.n_tokens > 0) {
-        LOG_DBG("%s: draft prompt batch: %s\n", __func__, string_from(ctx_dft, batch).c_str());
+        // LOG_DBG("%s: draft prompt batch: %s\n", __func__, string_from(ctx_dft, batch).c_str());
 
         llama_decode(ctx_dft, batch);
     }
@@ -475,7 +475,7 @@ llama_tokens common_speculative_gen_draft(
 
     prompt_dft.push_back(id_last_swapped);
 
-    LOG_DBG("%s: draft prompt: %s\n", __func__, string_from(ctx_dft, prompt_dft).c_str());
+    // LOG_DBG("%s: draft prompt: %s\n", __func__, string_from(ctx_dft, prompt_dft).c_str());
 
     llama_decode(ctx_dft, batch);
 
@@ -489,10 +489,10 @@ llama_tokens common_speculative_gen_draft(
 
         const auto * cur_p = common_sampler_get_candidates(smpl, true);
 
-        for (int k = 0; k < std::min(3, (int) cur_p->size); ++k) {
-            LOG_DBG(" - draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n",
-                    k, i, cur_p->data[k].id, cur_p->data[k].p, common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
-        }
+        // for (int k = 0; k < std::min(3, (int) cur_p->size); ++k) {
+        //     LOG_DBG(" - draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n",
+        //             k, i, cur_p->data[k].id, cur_p->data[k].p, common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
+        // }
 
         // add drafted token for each sequence
         const llama_token id = cur_p->data[0].id;
