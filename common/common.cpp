@@ -563,9 +563,13 @@ std::string string_from(const struct llama_context * ctx, const std::vector<llam
         }
 
         auto detokenized = common_token_to_piece(ctx, token);
-
-        buf << "'" << detokenized << "'"
-            << ":" << std::to_string(token);
+        // Special handling for newline character
+        if (detokenized == "\n") {
+            buf << "'\\n'" << ":" << std::to_string(token);
+        } else {
+            buf << "'" << detokenized << "'"
+                << ":" << std::to_string(token);
+        }
     }
 
     buf << " ]";
