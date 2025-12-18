@@ -336,7 +336,7 @@ void common_perf_print(const struct llama_context * ctx, const struct common_sam
     }
 }
 
-llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
+llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
 
     auto & grmr  = gsmpl->grmr;
@@ -376,6 +376,75 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
 
     llama_sampler_apply(grmr,  &cur_p);
     llama_sampler_apply(chain, &cur_p);
+
+    GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
+
+    return cur_p.data[cur_p.selected].id;
+}
+
+llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
+    gsmpl->set_logits(ctx, idx);
+
+    auto & grmr  = gsmpl->grmr;
+    auto & chain = gsmpl->chain;
+    auto & cur_p = gsmpl->cur_p; // initialized by set_logits
+
+    if (grammar_first) {
+        llama_sampler_apply(grmr, &cur_p);
+    }
+
+    // Manually apply only specific samplers: top-k, top-p, min-p, temp
+    int n_samplers = llama_sampler_chain_n(chain);
+    for (int i = 0; i < n_samplers; i++) {
+        auto * smpl = llama_sampler_chain_get(chain, i);
+        const char * smpl_name = llama_sampler_name(smpl);
+        std::string name_str(smpl_name);
+        
+        // Only apply top-k, top-p, min-p, and temp samplers
+        if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
+            llama_sampler_apply(smpl, &cur_p);
+        }
+    }
+    cur_p.selected = 0;
+    GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
+    
+    const llama_token id = cur_p.data[cur_p.selected].id;
+
+    if (grammar_first) {
+        return id;
+    }
+
+    // check if it the sampled token fits the grammar
+    {
+        llama_token_data       single_token_data       = { id, 1.0f, 0.0f };
+        llama_token_data_array single_token_data_array = { &single_token_data, 1, -1, false };
+
+        llama_sampler_apply(grmr, &single_token_data_array);
+
+        const bool is_valid = single_token_data_array.data[0].logit != -INFINITY;
+        if (is_valid) {
+            return id;
+        }
+    }
+
+    // resampling:
+    // if the token is not valid, sample again, but first apply the grammar sampler and then the sampling chain
+    gsmpl->set_logits(ctx, idx);
+
+    llama_sampler_apply(grmr,  &cur_p);
+    
+    // Manually apply only specific samplers during resampling: top-k, top-p, min-p, temp
+    int n_samplers_resample = llama_sampler_chain_n(chain);
+    for (int i = 0; i < n_samplers_resample; i++) {
+        auto * smpl = llama_sampler_chain_get(chain, i);
+        const char * smpl_name = llama_sampler_name(smpl);
+        std::string name_str(smpl_name);
+        
+        // Only apply top-k, top-p, min-p, and temp samplers
+        if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
+            llama_sampler_apply(smpl, &cur_p);
+        }
+    }
 
     GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
 
