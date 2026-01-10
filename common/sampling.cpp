@@ -405,6 +405,9 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
             llama_sampler_apply(smpl, &cur_p);
         }
     }
+    for (int k = 0; k < 5; ++k) {
+        LOG_DBG(" - draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
+    }
     cur_p.selected = 0;
     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
     
@@ -460,7 +463,7 @@ std::vector<llama_token> common_sampler_sample_and_accept_n(struct common_sample
     size_t i = 0;
     for (; i < draft.size(); i++) {
         const llama_token id = common_sampler_sample(gsmpl, ctx, idxs[i], grammar_first);
-
+        
         common_sampler_accept(gsmpl, id, true);
 
         result.push_back(id);
