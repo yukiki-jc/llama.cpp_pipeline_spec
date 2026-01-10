@@ -339,6 +339,11 @@ void common_perf_print(const struct llama_context * ctx, const struct common_sam
 llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
 
+    LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    for (int k = 0; k < 5; ++k) {
+        LOG_DBG(" - original logit token %d: %8.3f\n", k, gsmpl->cur_p.data[k].logit);
+    }
+
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
@@ -384,6 +389,13 @@ llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct
 
 llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
+
+    LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    for (int k = 0; k < 5; ++k) {
+        LOG_DBG(" - original logit token %d: %8.3f\n", k, gsmpl->cur_p.data[k].logit);
+    }
+    LOG_DBG(" - original logit token %d: %8.3f\n", 278, gsmpl->cur_p.data[278].logit);
+    LOG_DBG(" - original logit token %d: %8.3f\n", 1207, gsmpl->cur_p.data[1207].logit);
 
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
