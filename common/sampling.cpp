@@ -442,9 +442,13 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         llama_memory_seq_pos_max(llama_get_memory(ctx), 0));
 
     LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    auto t = ggml_time_ms();
     std::sort(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size, [](const llama_token_data & a, const llama_token_data & b) {
         return a.logit > b.logit;
     });
+    gsmpl->cur_p.sorted = true;
+    auto t1 = ggml_time_ms();
+    LOG_DBG(" - sorting time: %lld ms\n", (t1 - t));
     // for (int k = 0; k < 8; ++k) {
     //     LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
     // }
@@ -471,14 +475,23 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         //     llama_my_sampler_apply(smpl, &cur_p);
         // }
         if (name_str == "temp-ext") {
+            auto t1 = ggml_time_ms();
             llama_sampler_apply(smpl, &cur_p);
+            auto t2 = ggml_time_ms();
+            LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
         }
-        if (name_str == "min-p") {
-            llama_sampler_apply(smpl, &cur_p);
-        }
-        if (name_str == "top-p") {
-            llama_sampler_apply(smpl, &cur_p);
-        }
+        // if (name_str == "min-p") {
+        //     auto t1 = ggml_time_ms();
+        //     llama_sampler_apply(smpl, &cur_p);
+        //     auto t2 = ggml_time_ms();
+        //     LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
+        // }
+        // if (name_str == "top-p") {
+        //     auto t1 = ggml_time_ms();
+        //     llama_sampler_apply(smpl, &cur_p);
+        //     auto t2 = ggml_time_ms();
+        //     LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
+        // }
     }
     
     for (int k = 0; k < 5; ++k) {
