@@ -395,9 +395,9 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     //     std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
     //         return a.logit > b.logit;
     //     });
-    //     for (int k = 0; k < 8; ++k) {
-    //         LOG_DBG(" - original logit token %6d: %8.3f\n", cur_copy[k].id, cur_copy[k].logit);
-    //     }
+    for (int k = 0; k < 8; ++k) {
+        LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
+    }
     // }
 
     auto & grmr  = gsmpl->grmr;
