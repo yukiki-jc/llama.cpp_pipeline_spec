@@ -465,13 +465,13 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         std::string name_str(smpl_name);
         
         // Only apply top-k, top-p, min-p, and temp samplers
-        if (name_str == "top-k") {
-            LOG_DBG(" - applying sampler: %s\n", smpl_name);
-            llama_my_sampler_apply(smpl, &cur_p);
-        }
-        // if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
-        //     llama_sampler_apply(smpl, &cur_p);
+        // if (name_str == "top-k") {
+        //     LOG_DBG(" - applying sampler: %s\n", smpl_name);
+        //     llama_my_sampler_apply(smpl, &cur_p);
         // }
+        if (name_str == "temp-ext") {
+            llama_sampler_apply(smpl, &cur_p);
+        }
     }
     
     for (int k = 0; k < 5; ++k) {
