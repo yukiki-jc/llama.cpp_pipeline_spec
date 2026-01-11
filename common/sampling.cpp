@@ -472,7 +472,12 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         // }
         if (name_str == "temp-ext") {
             llama_sampler_apply(smpl, &cur_p);
-            llama_sampler_softmax_impl(&cur_p, false);
+        }
+        if (name_str == "min-p") {
+            llama_sampler_apply(smpl, &cur_p);
+        }
+        if (name_str == "top-p") {
+            llama_sampler_apply(smpl, &cur_p);
         }
     }
     
