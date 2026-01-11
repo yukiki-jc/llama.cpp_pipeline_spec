@@ -486,12 +486,12 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         //     auto t2 = ggml_time_ms();
         //     LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
         // }
-        // if (name_str == "top-p") {
-        //     auto t1 = ggml_time_ms();
-        //     llama_sampler_apply(smpl, &cur_p);
-        //     auto t2 = ggml_time_ms();
-        //     LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
-        // }
+        if (name_str == "top-p") {
+            auto t1 = ggml_time_ms();
+            llama_sampler_apply(smpl, &cur_p);
+            auto t2 = ggml_time_ms();
+            LOG_DBG(" - applying sampler: %s, time: %lld ms\n", smpl_name, (t2 - t1));
+        }
     }
     
     for (int k = 0; k < 5; ++k) {
