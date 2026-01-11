@@ -386,19 +386,19 @@ void common_perf_print(const struct llama_context * ctx, const struct common_sam
 
 llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
-    LOG_DBG("DEBUG_LOGITS: n_past_tgt=%d\n", 
-        llama_memory_seq_pos_max(llama_get_memory(ctx), 0));
+    // LOG_DBG("DEBUG_LOGITS: n_past_tgt=%d\n", 
+    //     llama_memory_seq_pos_max(llama_get_memory(ctx), 0));
 
-    LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
-    {
-        std::vector<llama_token_data> cur_copy(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size);
-        std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
-            return a.logit > b.logit;
-        });
-        for (int k = 0; k < 8; ++k) {
-            LOG_DBG(" - original logit token %6d: %8.3f\n", cur_copy[k].id, cur_copy[k].logit);
-        }
-    }
+    // LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    // {
+    //     std::vector<llama_token_data> cur_copy(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size);
+    //     std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
+    //         return a.logit > b.logit;
+    //     });
+    //     for (int k = 0; k < 8; ++k) {
+    //         LOG_DBG(" - original logit token %6d: %8.3f\n", cur_copy[k].id, cur_copy[k].logit);
+    //     }
+    // }
 
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
