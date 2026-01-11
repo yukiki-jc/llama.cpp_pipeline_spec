@@ -187,7 +187,7 @@ static void llama_token_data_array_partial_sort(const llama_token_data_array & c
 }
 
 // reduces the size of cur_p to npartial, keeping only the top npartial elements
-static void llama_token_data_array_partial_sort_inplace(llama_token_data_array * cur_p, int npartial) {
+void llama_token_data_array_partial_sort_inplace(llama_token_data_array * cur_p, int npartial) {
     static const auto comp = [](const llama_token_data & a, const llama_token_data & b) {
         return a.logit > b.logit;
     };
@@ -259,7 +259,7 @@ static void llama_log_softmax(float * array, size_t size) {
 }
 */
 
-static void llama_sampler_temp_impl(llama_token_data_array * cur_p, float temp) {
+void llama_sampler_temp_impl(llama_token_data_array * cur_p, float temp) {
     if (temp <= 0.0f) {
         // find the token with the highest logit and set the rest to -inf
         size_t max_i = 0;
@@ -283,7 +283,7 @@ static void llama_sampler_temp_impl(llama_token_data_array * cur_p, float temp) 
     }
 }
 
-static void llama_sampler_softmax_impl(llama_token_data_array * cur_p, bool do_sort) {
+void llama_sampler_softmax_impl(llama_token_data_array * cur_p, bool do_sort) {
     GGML_ASSERT(cur_p->size > 0);
 
     // Sort the logits in descending order if requested
@@ -311,7 +311,7 @@ static void llama_sampler_softmax_impl(llama_token_data_array * cur_p, bool do_s
     }
 }
 
-static void llama_sampler_top_k_impl(llama_token_data_array * cur_p, int32_t k) {
+void llama_sampler_top_k_impl(llama_token_data_array * cur_p, int32_t k) {
     // if (k >= (int32_t)cur_p->size) {
     //     return;
     // }

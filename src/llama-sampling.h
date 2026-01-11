@@ -30,3 +30,15 @@ struct llama_sampler * llama_sampler_init_dry_testing(
                          int32_t   dry_allowed_length,
                          int32_t   dry_penalty_last_n,
   const std::vector<std::vector<llama_token>>& seq_breakers);
+
+//
+// internal API
+//
+
+void llama_token_data_array_partial_sort_inplace(struct llama_token_data_array * cur_p, int npartial);
+
+void llama_sampler_temp_impl(struct llama_token_data_array * cur_p, float temp);
+
+void llama_sampler_softmax_impl(struct llama_token_data_array * cur_p, bool do_sort);
+
+void llama_sampler_top_k_impl(struct llama_token_data_array * cur_p, int32_t k);

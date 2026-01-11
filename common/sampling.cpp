@@ -6,7 +6,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <algorithm>
-
+#include "../src/llama-sampling.h"
 // the ring buffer works similarly to std::deque, but with a fixed capacity
 // TODO: deduplicate with llama-impl.h
 template<typename T>
@@ -435,33 +435,6 @@ void llama_my_sampler_apply(struct llama_sampler * smpl, llama_token_data_array 
     }
 }
 
-static void my_llama_sampler_softmax_impl(llama_token_data_array * cur_p, bool do_sort) {
-    GGML_ASSERT(cur_p->size > 0);
-
-    // Sort the logits in descending order if requested
-    if (do_sort && !cur_p->sorted) {
-        llama_token_data_array_partial_sort_inplace(cur_p, cur_p->size);
-    }
-
-    float max_l = cur_p->data[0].logit;
-    if (!cur_p->sorted) {
-        for (size_t i = 1; i < cur_p->size; ++i) {
-            max_l = std::max(max_l, cur_p->data[i].logit);
-        }
-    }
-
-    float cum_sum = 0.0f;
-
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        float p = expf(cur_p->data[i].logit - max_l);
-        cur_p->data[i].p = p;
-        cum_sum += p;
-    }
-
-    for (size_t i = 0; i < cur_p->size; ++i) {
-        cur_p->data[i].p /= cum_sum;
-    }
-}
 
 llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
@@ -499,7 +472,7 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         // }
         if (name_str == "temp-ext") {
             llama_sampler_apply(smpl, &cur_p);
-            my_llama_sampler_softmax_impl(&cur_p, false);
+            llama_sampler_softmax_impl(&cur_p, false);
         }
     }
     
