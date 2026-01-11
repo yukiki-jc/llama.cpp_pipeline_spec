@@ -336,53 +336,104 @@ void common_perf_print(const struct llama_context * ctx, const struct common_sam
     }
 }
 
-// llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
-//     gsmpl->set_logits(ctx, idx);
+llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
+    gsmpl->set_logits(ctx, idx);
 
-//     LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    auto & grmr  = gsmpl->grmr;
+    auto & chain = gsmpl->chain;
+    auto & cur_p = gsmpl->cur_p; // initialized by set_logits
 
-//     auto & grmr  = gsmpl->grmr;
-//     auto & chain = gsmpl->chain;
-//     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
+    if (grammar_first) {
+        llama_sampler_apply(grmr, &cur_p);
+    }
 
-//     if (grammar_first) {
-//         llama_sampler_apply(grmr, &cur_p);
-//     }
+    llama_sampler_apply(chain, &cur_p);
 
-//     llama_sampler_apply(chain, &cur_p);
+    GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
 
-//     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
+    const llama_token id = cur_p.data[cur_p.selected].id;
 
-//     const llama_token id = cur_p.data[cur_p.selected].id;
+    if (grammar_first) {
+        return id;
+    }
 
-//     if (grammar_first) {
-//         return id;
-//     }
+    // check if it the sampled token fits the grammar
+    {
+        llama_token_data       single_token_data       = { id, 1.0f, 0.0f };
+        llama_token_data_array single_token_data_array = { &single_token_data, 1, -1, false };
 
-//     // check if it the sampled token fits the grammar
-//     {
-//         llama_token_data       single_token_data       = { id, 1.0f, 0.0f };
-//         llama_token_data_array single_token_data_array = { &single_token_data, 1, -1, false };
+        llama_sampler_apply(grmr, &single_token_data_array);
 
-//         llama_sampler_apply(grmr, &single_token_data_array);
+        const bool is_valid = single_token_data_array.data[0].logit != -INFINITY;
+        if (is_valid) {
+            return id;
+        }
+    }
 
-//         const bool is_valid = single_token_data_array.data[0].logit != -INFINITY;
-//         if (is_valid) {
-//             return id;
-//         }
-//     }
+    // resampling:
+    // if the token is not valid, sample again, but first apply the grammar sampler and then the sampling chain
+    gsmpl->set_logits(ctx, idx);
 
-//     // resampling:
-//     // if the token is not valid, sample again, but first apply the grammar sampler and then the sampling chain
-//     gsmpl->set_logits(ctx, idx);
+    llama_sampler_apply(grmr,  &cur_p);
+    llama_sampler_apply(chain, &cur_p);
 
-//     llama_sampler_apply(grmr,  &cur_p);
-//     llama_sampler_apply(chain, &cur_p);
+    GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
 
-//     GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
+    return cur_p.data[cur_p.selected].id;
+}
 
-//     return cur_p.data[cur_p.selected].id;
-// }
+struct llama_sampler_top_k {
+    const int32_t k;
+};
+
+void llama_my_sampler_apply(struct llama_sampler * smpl, llama_token_data_array * cur_p) {
+    if (cur_p->size == 0) {
+        return;
+    }
+
+    // 1. 获取 K 值 (假设使用了 top-k 的 context 结构)
+    // auto * ctx = (llama_sampler_top_k *) smpl->ctx;
+    // int32_t k = ctx->k;
+    
+    // LOG_DBG(" - top-k sampler: k = %d\n", k);
+    // k = std::min<int32_t>(k > 0 ? k : (int32_t)cur_p->size, (int32_t)cur_p->size);
+    // k = cur_p->size;
+    // // 2. Top-K 排序：只对前 k 个进行部分排序 (按 Logit 降序)
+    // std::sort(cur_p->data, cur_p->data + k, [](const llama_token_data & a, const llama_token_data & b) {
+    //     return a.logit > b.logit;
+    // });
+    // // 1. 获取 K 值 (假设使用了 top-k 的 context 结构)
+    // auto * ctx = (llama_sampler_top_k *) smpl->ctx;
+    // int32_t k = ctx->k;
+    // LOG_DBG(" - top-k sampler: k = %d\n", k);
+    // k = std::min<int32_t>(k > 0 ? k : (int32_t)cur_p->size, (int32_t)cur_p->size);
+
+    // // 2. Top-K 排序：只对前 k 个进行部分排序 (按 Logit 降序)
+    // std::partial_sort(cur_p->data, cur_p->data + k, cur_p->data + cur_p->size, 
+    //     [](const llama_token_data & a, const llama_token_data & b) {
+    //         return a.logit > b.logit;
+    //     });
+    
+    // 3. 截断数组：只保留前 k 个候选词
+    // cur_p->size = k;
+    cur_p->sorted = true;
+
+    // 4. Softmax 计算：将 Logits 转换为概率 p
+    // 找到最大值用于数值稳定性 (已经在 indices[0] 位置)
+    float max_l = cur_p->data[0].logit;
+
+    double cum_sum = 0.0;
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        float p = expf(cur_p->data[i].logit - max_l);
+        cur_p->data[i].p = p;
+        cum_sum += (double)p;
+    }
+
+    // 归一归一：确保所有概率之和为 1.0
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        cur_p->data[i].p /= (float)cum_sum;
+    }
+}
 
 llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
@@ -390,15 +441,12 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
         llama_memory_seq_pos_max(llama_get_memory(ctx), 0));
 
     LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
-    {
-        std::vector<llama_token_data> cur_copy(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size);
-        std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
-            return a.logit > b.logit;
-        });
-        for (int k = 0; k < 8; ++k) {
-            LOG_DBG(" - original logit token %6d: %8.3f\n", cur_copy[k].id, cur_copy[k].logit);
-        }
-    }
+    std::sort(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size, [](const llama_token_data & a, const llama_token_data & b) {
+        return a.logit > b.logit;
+    });
+    // for (int k = 0; k < 8; ++k) {
+    //     LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
+    // }
 
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
@@ -413,13 +461,19 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     for (int i = 0; i < n_samplers; i++) {
         auto * smpl = llama_sampler_chain_get(chain, i);
         const char * smpl_name = llama_sampler_name(smpl);
+        LOG_DBG(" - chekcing sampler: %s\n", smpl_name);
         std::string name_str(smpl_name);
         
         // Only apply top-k, top-p, min-p, and temp samplers
-        if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
-            llama_sampler_apply(smpl, &cur_p);
+        if (name_str == "top-k") {
+            LOG_DBG(" - applying sampler: %s\n", smpl_name);
+            llama_my_sampler_apply(smpl, &cur_p);
         }
+        // if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
+        //     llama_sampler_apply(smpl, &cur_p);
+        // }
     }
+    
     for (int k = 0; k < 5; ++k) {
         LOG_DBG(" - draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
     }
@@ -456,10 +510,14 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     for (int i = 0; i < n_samplers_resample; i++) {
         auto * smpl = llama_sampler_chain_get(chain, i);
         const char * smpl_name = llama_sampler_name(smpl);
+        LOG_DBG(" - [resample] applying sampler: %s\n", smpl_name);
         std::string name_str(smpl_name);
         
         // Only apply top-k, top-p, min-p, and temp samplers
         if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
+            if (name_str == "top-p") {
+                LOG_DBG("   - [resample] top-p params: p=%f, min_keep=%zu\n", gsmpl->params.top_p, (size_t)gsmpl->params.min_keep);
+            }
             llama_sampler_apply(smpl, &cur_p);
         }
     }
