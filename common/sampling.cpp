@@ -446,7 +446,7 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     std::sort(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size, [](const llama_token_data & a, const llama_token_data & b) {
         return a.logit > b.logit;
     });
-    gsmpl->cur_p.sorted = true;
+    // gsmpl->cur_p.sorted = true;
     auto t1 = ggml_time_ms();
     LOG_DBG(" - sorting time: %lld ms\n", (t1 - t));
     // for (int k = 0; k < 8; ++k) {
