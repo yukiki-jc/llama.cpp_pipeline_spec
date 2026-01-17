@@ -395,11 +395,11 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     //     std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
     //         return a.logit > b.logit;
     //     });
-    //     for (int k = 0; k < 8; ++k) {
-    //         LOG_DBG(" - original logit token %6d: %8.3f\n", cur_copy[k].id, cur_copy[k].logit);
-    //     }
+    
     // }
-
+    for (int k = 0; k < 8; ++k) {
+        LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
+    }
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
@@ -410,18 +410,18 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
 
     // Manually apply only specific samplers: top-k, top-p, min-p, temp
     int n_samplers = llama_sampler_chain_n(chain);
+    LOG_INF("Applying sampler number: %d\n", n_samplers);
     for (int i = 0; i < n_samplers; i++) {
         auto * smpl = llama_sampler_chain_get(chain, i);
         const char * smpl_name = llama_sampler_name(smpl);
         std::string name_str(smpl_name);
-        
         // Only apply top-k, top-p, min-p, and temp samplers
         if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
             llama_sampler_apply(smpl, &cur_p);
         }
     }
     for (int k = 0; k < 5; ++k) {
-        LOG_DBG(" - draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
+        LOG_DBG(" - in sampling.cpp draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
     }
     cur_p.selected = 0;
     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
