@@ -397,9 +397,9 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
     //     });
     
     // }
-    for (int k = 0; k < 8; ++k) {
-        LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
-    }
+    // for (int k = 0; k < 8; ++k) {
+    //     LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
+    // }
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
@@ -420,9 +420,9 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
             llama_sampler_apply(smpl, &cur_p);
         }
     }
-    for (int k = 0; k < 5; ++k) {
-        LOG_DBG(" - in sampling.cpp draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
-    }
+    // for (int k = 0; k < 5; ++k) {
+    //     LOG_DBG(" - in sampling.cpp draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
+    // }
     cur_p.selected = 0;
     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
     
