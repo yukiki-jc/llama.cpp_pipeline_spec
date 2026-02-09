@@ -336,55 +336,70 @@ void common_perf_print(const struct llama_context * ctx, const struct common_sam
     }
 }
 
-llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
-    gsmpl->set_logits(ctx, idx);
+// llama_token original_common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
+//     gsmpl->set_logits(ctx, idx);
 
-    auto & grmr  = gsmpl->grmr;
-    auto & chain = gsmpl->chain;
-    auto & cur_p = gsmpl->cur_p; // initialized by set_logits
+//     LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
 
-    if (grammar_first) {
-        llama_sampler_apply(grmr, &cur_p);
-    }
+//     auto & grmr  = gsmpl->grmr;
+//     auto & chain = gsmpl->chain;
+//     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
 
-    llama_sampler_apply(chain, &cur_p);
+//     if (grammar_first) {
+//         llama_sampler_apply(grmr, &cur_p);
+//     }
 
-    GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
+//     llama_sampler_apply(chain, &cur_p);
 
-    const llama_token id = cur_p.data[cur_p.selected].id;
+//     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
 
-    if (grammar_first) {
-        return id;
-    }
+//     const llama_token id = cur_p.data[cur_p.selected].id;
 
-    // check if it the sampled token fits the grammar
-    {
-        llama_token_data       single_token_data       = { id, 1.0f, 0.0f };
-        llama_token_data_array single_token_data_array = { &single_token_data, 1, -1, false };
+//     if (grammar_first) {
+//         return id;
+//     }
 
-        llama_sampler_apply(grmr, &single_token_data_array);
+//     // check if it the sampled token fits the grammar
+//     {
+//         llama_token_data       single_token_data       = { id, 1.0f, 0.0f };
+//         llama_token_data_array single_token_data_array = { &single_token_data, 1, -1, false };
 
-        const bool is_valid = single_token_data_array.data[0].logit != -INFINITY;
-        if (is_valid) {
-            return id;
-        }
-    }
+//         llama_sampler_apply(grmr, &single_token_data_array);
 
-    // resampling:
-    // if the token is not valid, sample again, but first apply the grammar sampler and then the sampling chain
-    gsmpl->set_logits(ctx, idx);
+//         const bool is_valid = single_token_data_array.data[0].logit != -INFINITY;
+//         if (is_valid) {
+//             return id;
+//         }
+//     }
 
-    llama_sampler_apply(grmr,  &cur_p);
-    llama_sampler_apply(chain, &cur_p);
+//     // resampling:
+//     // if the token is not valid, sample again, but first apply the grammar sampler and then the sampling chain
+//     gsmpl->set_logits(ctx, idx);
 
-    GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
+//     llama_sampler_apply(grmr,  &cur_p);
+//     llama_sampler_apply(chain, &cur_p);
 
-    return cur_p.data[cur_p.selected].id;
-}
+//     GGML_ASSERT(cur_p.selected != -1 && "no selected token during re-sampling - check your sampling configuration");
+
+//     return cur_p.data[cur_p.selected].id;
+// }
 
 llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_context * ctx, int idx, bool grammar_first) {
     gsmpl->set_logits(ctx, idx);
+    // LOG_DBG("DEBUG_LOGITS: n_past_tgt=%d\n", 
+    //     llama_memory_seq_pos_max(llama_get_memory(ctx), 0));
 
+    // LOG_DBG("%s: idx: %d, seed: %u\n", __func__, idx, common_sampler_get_seed(gsmpl));
+    // {
+    //     std::vector<llama_token_data> cur_copy(gsmpl->cur_p.data, gsmpl->cur_p.data + gsmpl->cur_p.size);
+    //     std::sort(cur_copy.begin(), cur_copy.end(), [](const llama_token_data & a, const llama_token_data & b) {
+    //         return a.logit > b.logit;
+    //     });
+    
+    // }
+    for (int k = 0; k < 8; ++k) {
+        LOG_DBG(" - original logit token %6d: %8.3f\n", gsmpl->cur_p.data[k].id, gsmpl->cur_p.data[k].logit);
+    }
     auto & grmr  = gsmpl->grmr;
     auto & chain = gsmpl->chain;
     auto & cur_p = gsmpl->cur_p; // initialized by set_logits
@@ -395,15 +410,18 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
 
     // Manually apply only specific samplers: top-k, top-p, min-p, temp
     int n_samplers = llama_sampler_chain_n(chain);
+    LOG_INF("Applying sampler number: %d\n", n_samplers);
     for (int i = 0; i < n_samplers; i++) {
         auto * smpl = llama_sampler_chain_get(chain, i);
         const char * smpl_name = llama_sampler_name(smpl);
         std::string name_str(smpl_name);
-        
         // Only apply top-k, top-p, min-p, and temp samplers
         if (name_str == "top-p" || name_str == "min-p" || name_str == "temp-ext") {
             llama_sampler_apply(smpl, &cur_p);
         }
+    }
+    for (int k = 0; k < 5; ++k) {
+        LOG_DBG(" - in sampling.cpp draft candidate %3d, pos %3d: %6d (%8.3f) '%s'\n", k, idx, cur_p.data[k].id, cur_p.data[k].p, common_token_to_piece(ctx, cur_p.data[k].id).c_str());
     }
     cur_p.selected = 0;
     GGML_ASSERT(cur_p.selected != -1 && "no selected token during sampling - check your sampling configuration");
@@ -460,7 +478,7 @@ std::vector<llama_token> common_sampler_sample_and_accept_n(struct common_sample
     size_t i = 0;
     for (; i < draft.size(); i++) {
         const llama_token id = common_sampler_sample(gsmpl, ctx, idxs[i], grammar_first);
-
+        
         common_sampler_accept(gsmpl, id, true);
 
         result.push_back(id);
