@@ -410,7 +410,7 @@ llama_token common_sampler_sample(struct common_sampler * gsmpl, struct llama_co
 
     // Manually apply only specific samplers: top-k, top-p, min-p, temp
     int n_samplers = llama_sampler_chain_n(chain);
-    LOG_INF("Applying sampler number: %d\n", n_samplers);
+    // LOG_INF("Applying sampler number: %d\n", n_samplers);
     for (int i = 0; i < n_samplers; i++) {
         auto * smpl = llama_sampler_chain_get(chain, i);
         const char * smpl_name = llama_sampler_name(smpl);
